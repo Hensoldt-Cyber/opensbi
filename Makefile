@@ -12,6 +12,24 @@
 # o  Do not print "Entering directory ...";
 MAKEFLAGS += -r --no-print-directory
 
+# Technically, the cleanup step does not require PLATFORM to be set, it only
+# requires "-O=" if a custom build output folder is used. Since the OpenSBI
+# build could be running as part of another bigger build system, an environment
+# variable PLATFORM could exist already, but with a value that OpenSBI does not
+# understand. By explicitly dropping the PLATFORM variable here, running
+# "make -O=xxx clean" and "make -O=xxx distclean" when PLATFORM contains an
+# unsupported value. So there is no need to require that PLATFORM holds a valid
+# value or "make -O=xxx PLATFORM=something clean" must be used,
+override undefine DO_CLEAN_ONLY
+ifdef MAKECMDGOALS
+  ifeq (,$(filter-out clean distclean,$(MAKECMDGOALS)))
+    ifdef PLATFORM
+      $(info cleanup will ignore PLATFORM set to '$(PLATFORM)')
+      override undefine PLATFORM
+    endif
+  endif
+endif
+
 # Readlink -f requires GNU readlink
 ifeq ($(shell uname -s),Darwin)
 READLINK ?= greadlink
