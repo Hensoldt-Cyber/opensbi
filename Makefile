@@ -27,6 +27,7 @@ ifdef MAKECMDGOALS
       $(info cleanup will ignore PLATFORM set to '$(PLATFORM)')
       override undefine PLATFORM
     endif
+    DO_CLEAN_ONLY := Y
   endif
 endif
 
@@ -59,6 +60,8 @@ endif
 ifeq ($(install_root_dir),$(build_dir))
 $(error Install root directory is same as build directory.)
 endif
+
+platform_parent_dir=$(src_dir)/platform
 ifdef PLATFORM_DIR
   platform_dir_path=$(shell $(READLINK) -f $(PLATFORM_DIR))
   ifdef PLATFORM
@@ -67,8 +70,6 @@ ifdef PLATFORM_DIR
     PLATFORM=$(shell basename $(platform_dir_path))
     platform_parent_dir=$(shell realpath ${platform_dir_path}/..)
   endif
-else
- platform_parent_dir=$(src_dir)/platform
 endif
 ifndef PLATFORM_DEFCONFIG
 PLATFORM_DEFCONFIG=defconfig
@@ -217,7 +218,7 @@ OPENSBI_BUILD_COMPILER_VERSION=$(shell $(CC) -v 2>&1 | grep ' version ' | \
 endif
 
 # Setup list of objects.mk files
-ifdef PLATFORM
+ifdef platform_src_dir
 platform-object-mks=$(shell if [ -d $(platform_src_dir)/ ]; then find $(platform_src_dir) -iname "objects.mk" | sort -r; fi)
 endif
 libsbi-object-mks=$(shell if [ -d $(libsbi_dir) ]; then find $(libsbi_dir) -iname "objects.mk" | sort -r; fi)
@@ -256,7 +257,7 @@ include $(KCONFIG_AUTOCMD)
 endif
 
 # Include all objects.mk files
-ifdef PLATFORM
+ifdef platform-object-mks
 include $(platform-object-mks)
 endif
 include $(libsbi-object-mks)
@@ -265,9 +266,11 @@ include $(firmware-object-mks)
 
 # Setup list of objects
 libsbi-objs-path-y=$(foreach obj,$(libsbi-objs-y),$(build_dir)/lib/sbi/$(obj))
-ifdef PLATFORM
+ifdef platform-objs-y
 libsbiutils-objs-path-y=$(foreach obj,$(libsbiutils-objs-y),$(platform_build_dir)/lib/utils/$(obj))
 platform-objs-path-y=$(foreach obj,$(platform-objs-y),$(platform_build_dir)/$(obj))
+endif
+ifdef firmware-bins-y
 firmware-bins-path-y=$(foreach bin,$(firmware-bins-y),$(platform_build_dir)/firmware/$(bin))
 endif
 firmware-elfs-path-y=$(firmware-bins-path-y:.bin=.elf)
@@ -503,7 +506,7 @@ compile_gen_dep = $(CMD_PREFIX)mkdir -p `dirname $(1)`; \
 	     echo "$(1:.dep=$(2)): $(3)" >> $(1)
 
 targets-y  = $(build_dir)/lib/libsbi.a
-ifdef PLATFORM
+ifdef platform_build_dir
 targets-y += $(platform_build_dir)/lib/libplatsbi.a
 endif
 targets-y += $(firmware-bins-path-y)
